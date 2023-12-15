@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,8 +6,9 @@ using UnityEngine.UI;
 
 public class CardItem : MonoBehaviour
 {
-    public Transform father;
-    GameObject source;
+    public int type = 0;
+    public GameObject source;
+    public Action<CardItem> ChooseAction;
     // Start is called before the first frame update
     void Start()
     {
@@ -22,24 +24,24 @@ public class CardItem : MonoBehaviour
         
     }
 
-    public void Choose() {
-        gameObject.SetActive(false);
-        if (source == null)
+    private void Choose()
+    {
+        if (ChooseAction != null)
         {
-            InitItem();
+            ChooseAction(this);
         }
-        else
+        if (type == 0)
+        {
+            gameObject.SetActive(false);
+        }
+        if (type == 1)
         {
             source.gameObject.SetActive(true);
-            Destroy(gameObject); 
+            Destroy(gameObject);
         }
-    }
-
-    void InitItem()
-    {
-        GameObject gc = Instantiate(gameObject, father.transform);
-        gc.name = name;
-        gc.gameObject.SetActive(true);
-        gc.GetComponent<CardItem>().source = gameObject;
+        if (type == 2)
+        {
+            Destroy(gameObject);
+        }
     }
 }

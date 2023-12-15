@@ -85,7 +85,7 @@ public class SaveCamTexture : MonoBehaviour
 
     private IEnumerator CaptureScreenshotCoroutine()
     {
-        Capture();
+        //Capture();
 
         yield return new WaitForEndOfFrame(); // 等待当前帧渲染结束
 
