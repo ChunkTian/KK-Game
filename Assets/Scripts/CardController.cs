@@ -232,6 +232,12 @@ public class CardController : MonoBehaviour
 
         Debug.Log(choosetrue ? "正确" : "错误");
 
+        ShowDialog(choosetrue);
+    }
+
+    void ShowDialog(bool value)
+    {
+        dialog.Find("Message").GetComponent<Text>().text = value ? "正确" : "错误";
         dialog.gameObject.SetActive(true);
     }
 
