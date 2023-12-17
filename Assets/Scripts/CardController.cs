@@ -4,8 +4,16 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
+public enum ModelEnum
+{
+    Random,
+    Optional,
+    Choosen
+}
+
 public class CardController : MonoBehaviour
 {
+    public Color[] colors;
     public Transform father;
     public Transform choosefather;
     public Transform tempfather;
@@ -13,10 +21,14 @@ public class CardController : MonoBehaviour
     public Dictionary<string, CardItem> cards;
     public List<CardItem> choosecards;
     public List<CardItem> tempcards;
+    public Transform dialog;
 
     public string chooses;
+    public List<string> mychooses;
 
     public bool finish = true;
+
+    public ModelEnum currentModel;
 
     // Start is called before the first frame update
     [System.Obsolete]
@@ -24,16 +36,25 @@ public class CardController : MonoBehaviour
     {
         StartCoroutine(LoadSetting());
         Init();
+        Suiji();
     }
 
     // Update is called once per frame
     void Update()
     {
-
+        if (Input.GetKeyDown(KeyCode.S))
+        {
+            Suiji();
+        }
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            SubmitRecord();
+        }
     }
 
     private void Init()
     {
+        currentModel = ModelEnum.Optional;
         cards = new Dictionary<string, CardItem>();
         for (int i = 1; i < 14; i++)
         {
@@ -54,10 +75,10 @@ public class CardController : MonoBehaviour
     public void Pass()
     {
         string na = "00";
-        tempcards.Add(InitItem(na, 2, tempfather));
+        tempcards.Add(InitItem(na, CardTypeEnum.ChooseCard, tempfather));
     }
 
-    CardItem InitItem(string na, int type, Transform _father)
+    CardItem InitItem(string na, CardTypeEnum type, Transform _father)
     {
         GameObject gc = Instantiate(sampleitem, _father);
         gc.name = na;
@@ -73,17 +94,31 @@ public class CardController : MonoBehaviour
 
     public void CardChoose(CardItem cardItem)
     {
-        if (cardItem.type == 0)
+        if (cardItem.type == CardTypeEnum.PlloCard && (currentModel == ModelEnum.Optional || currentModel == ModelEnum.Choosen))
         {
-            CardItem _cardItem = InitItem(cardItem.name, 1, tempfather);
+            currentModel = ModelEnum.Choosen;
+            CardItem _cardItem = InitItem(cardItem.name, CardTypeEnum.ChooseCard, tempfather);
             tempcards.Add(_cardItem);
             _cardItem.source = cardItem.gameObject;
+            cardItem.gameObject.SetActive(false);
         }
-    }
-
-    public void Suiji()
-    {
-        StartCoroutine(Show());
+        if (cardItem.type == CardTypeEnum.ChooseCard)
+        {
+            if (cardItem.source)
+            {
+                cardItem.source.gameObject.SetActive(true);
+            }
+            tempcards.Remove(cardItem);
+            Destroy(cardItem.gameObject);
+            if (tempcards.Count == 0)
+            {
+                currentModel = ModelEnum.Optional;
+            }
+        }
+        if (cardItem.type == CardTypeEnum.ChoosenCard)
+        {
+            //Destroy(cardItem.gameObject);
+        }
     }
 
     private IEnumerator Show()
@@ -92,64 +127,150 @@ public class CardController : MonoBehaviour
         {
             finish = false;
             List<string> _chooses = String2List(chooses);
-            for (int i = 0; i < _chooses.Count; i++)
+            int count = 0;
+            foreach (var item in chooses.Split("|"))
             {
-                yield return new WaitForSeconds(0.2f);
-                
-                CardItem _cardItem = InitItem(_chooses[i], 3, choosefather);
-                if (cards.ContainsKey(_chooses[i]))
+                string[] values = item.Split(",");
+                foreach (var val in values)
                 {
-                    GameObject _source = cards[_chooses[i]].gameObject;
-                    _cardItem.source = _source;
-                    _source.SetActive(false);
-                }
+                    yield return new WaitForSeconds(0.2f);
 
-                choosecards.Add(_cardItem);
+                    CardItem _cardItem = InitItem(val, CardTypeEnum.ChoosenCard, choosefather);
+                    if (cards.ContainsKey(val))
+                    {
+                        GameObject _source = cards[val].gameObject;
+                        _cardItem.source = _source;
+                        _source.SetActive(false);
+                    }
+                    _cardItem.transform.Find("Image").GetComponent<Image>().color = colors[count % 3];
+                    choosecards.Add(_cardItem);
+                }
+                count++;
             }
+            
             finish = true;
         }
     }
 
-    public void Clean()
+    public void BeginRecord()
     {
-        StartCoroutine(Reset());
+        transform.Find("Center/Button_Record").GetComponent<Button>().interactable = false;
+        Clean();
     }
 
-    private IEnumerator Reset()
+    public void Reset()
     {
-        for (int i = 0; i < choosecards.Count; i++)
+        Clean();
+        transform.Find("Center/Button_Record").GetComponent<Button>().interactable = true;
+        Suiji();
+    }
+
+    private void Clean()
+    {
+        currentModel = ModelEnum.Optional;
+
+        int count = choosecards.Count;
+
+        for (int i = 0; i < count; i++)
         {
             if (choosecards[i].GetComponent<CardItem>().source)
             {
                 choosecards[i].GetComponent<CardItem>().source.gameObject.SetActive(true);
             }
             Destroy(choosecards[i].gameObject);
-            yield return new WaitForSeconds(0.1f);
         }
         choosecards.Clear();
-        for (int i = 0; i < tempcards.Count; i++)
+
+        count = tempcards.Count;
+        for (int i = 0; i < count; i++)
         {
             if (tempcards[i].GetComponent<CardItem>().source)
             {
                 tempcards[i].GetComponent<CardItem>().source.gameObject.SetActive(true);
             }
             Destroy(tempcards[i].gameObject);
-            yield return new WaitForSeconds(0.1f);
         }
         tempcards.Clear();
+
+        mychooses.Clear();
     }
 
-
-    public void Jisuan()
+    public void Record()
     {
-        List<string> _chooses = String2List(chooses);
-        bool choosetrue = true;
-        for (int i = 0; i < choosefather.childCount; i++)
+        Color _color = colors[mychooses.Count % 3];
+        string _mychoose = "";
+        int count = tempfather.childCount;
+        for (int i = 0; i < count; i++)
         {
-            choosetrue &= (int.Parse(_chooses[i]) / 10 == int.Parse(choosefather.GetChild(i).name) / 10);
+            Transform _transform = tempfather.GetChild(0);
+            _mychoose += _transform.name + ',';
+            _transform.GetComponent<CardItem>().type = CardTypeEnum.ChoosenCard;
+            _transform.SetParent(choosefather, true);
+            _transform.Find("Image").GetComponent<Image>().color = _color;
+        }
+        _mychoose = _mychoose.Trim(',');
+        mychooses.Add(_mychoose);
+    }
+
+    public void Computer()
+    {
+        string _mychoose = "";
+        foreach (var item in mychooses)
+        {
+            _mychoose += item + "|";
+        }
+        _mychoose = _mychoose.Trim('|');
+
+        List<string> source = String2List(chooses);
+        List<string> cho = String2List(_mychoose);
+
+        bool choosetrue = source.Count == cho.Count;
+        for (int i = 0; choosetrue && i < cho.Count; i++)
+        {
+            choosetrue &= (int.Parse(source[i]) / 10 == int.Parse(cho[i]) / 10);
         }
 
         Debug.Log(choosetrue ? "正确" : "错误");
+
+        dialog.gameObject.SetActive(true);
+    }
+
+    public void Repeat()
+    {
+        dialog.gameObject.SetActive(false);
+        Reset();
+    }
+
+    public void Next()
+    {
+        dialog.gameObject.SetActive(false);
+        chooses = RandomString(8);
+        Reset();
+    }
+
+    string RandomString(int count)
+    {
+        string[] strings = new string[cards.Count];
+        cards.Keys.CopyTo(strings, 0);
+        
+        List<string> selectedStrings = new List<string>();
+
+        while (selectedStrings.Count < count)
+        {
+            int index = Random.Range(0, strings.Length);
+            string selectedString = strings[index];
+
+            if (!selectedStrings.Contains(selectedString))
+            {
+                selectedStrings.Add(selectedString);
+            }
+        }
+        string strdata = "";
+        foreach (string str in selectedStrings)
+        {
+            strdata += str + ",";
+        }
+        return strdata.Trim(',');
     }
 
     [System.Obsolete]
@@ -199,13 +320,23 @@ public class CardController : MonoBehaviour
         return data;
     }
 
-    [ContextMenu("Record")]
-    public void Record()
+    public void Suiji()
+    {
+        Clean();
+
+        if (currentModel == ModelEnum.Optional)
+        {
+            currentModel = ModelEnum.Random;
+            StartCoroutine(Show());
+        }
+    }
+
+    public void SubmitRecord()
     {
         string str = "";
-        for (int i = 0; i < tempfather.childCount; i++)
+        for (int i = 0; i < choosefather.childCount; i++)
         {
-            str += tempfather.GetChild(i).name + ",";
+            str += choosefather.GetChild(i).name + ",";
         }
         Debug.Log(str);
     }

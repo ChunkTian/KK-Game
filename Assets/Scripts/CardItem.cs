@@ -4,9 +4,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+public enum CardTypeEnum
+{
+    PlloCard,
+    ChooseCard,
+    ChoosenCard
+}
+
 public class CardItem : MonoBehaviour
 {
-    public int type = 0;
+    public CardTypeEnum type = 0;
     public GameObject source;
     public Action<CardItem> ChooseAction;
     // Start is called before the first frame update
@@ -29,19 +36,6 @@ public class CardItem : MonoBehaviour
         if (ChooseAction != null)
         {
             ChooseAction(this);
-        }
-        if (type == 0)
-        {
-            gameObject.SetActive(false);
-        }
-        if (type == 1)
-        {
-            source.gameObject.SetActive(true);
-            Destroy(gameObject);
-        }
-        if (type == 2)
-        {
-            Destroy(gameObject);
         }
     }
 }
